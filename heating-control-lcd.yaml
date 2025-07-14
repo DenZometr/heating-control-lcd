@@ -16,19 +16,16 @@ api:
 
 ota:
   - platform: esphome
-    password: "2d0e9d66d7407fa541257928a35bcb56"
+    password: 
 
 wifi:
   networks:
-  - ssid: TSK
-  - password: Local013
-  - ssid: "38"
-  - password: Merss320
+  
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Heating-Control Fallback Hotspot"
-    password: "Merss320"
+    password: 
 
 captive_portal:
 
