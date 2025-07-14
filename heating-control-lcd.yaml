@@ -1,0 +1,405 @@
+esphome:
+  name: heating-control-lcd
+  friendly_name: Heating Control LCD
+
+esp32:
+  board: node32s
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+
+ota:
+  - platform: esphome
+    password: "2d0e9d66d7407fa541257928a35bcb56"
+
+wifi:
+  networks:
+  - ssid: TSK
+  - password: Local013
+  - ssid: "38"
+  - password: Merss320
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Heating-Control Fallback Hotspot"
+    password: "Merss320"
+
+captive_portal:
+
+    
+#описываем датчик температуры ds2812
+one_wire:
+  - platform: gpio
+    pin: GPIO21
+    id: "L0"
+  - platform: gpio
+    pin: GPIO18
+    id: "L1"
+  - platform: gpio
+    pin: GPIO02
+    id: "L2"
+  - platform: gpio
+    pin: GPIO19
+    id: "L3"
+  - platform: gpio
+    pin: GPIO22
+    id: "L4"
+  - platform: gpio
+    pin: GPIO23
+    id: "L5"
+  - platform: gpio
+    pin: GPIO32
+    id: "L6"
+  - platform: gpio
+    pin: GPIO25
+    id: "L7"
+  - platform: gpio
+    pin: GPIO27
+    id: "L8"
+  - platform: gpio
+    pin: GPIO26
+    id: "L9"
+  - platform: gpio
+    pin: GPIO33
+    id: "L10"
+
+sensor:
+  - platform: dallas_temp
+    name: "boiler_temp"
+    one_wire_id: L0
+    id: boiler_temp
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "podval_podacha"
+    one_wire_id: L1
+    id: temp_0
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "podval_obratka"
+    one_wire_id: L2
+    id: temp_1
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "1_podacha"
+    one_wire_id: L3
+    id: temp_2
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "1_obratka"
+    one_wire_id: L4
+    id: temp_3
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "2_podacha"
+    one_wire_id: L5
+    id: temp_4
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "2_obratka"
+    one_wire_id: L6
+    id: temp_5
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "mansarda_podacha"
+    one_wire_id: L7
+    id: temp_6
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "mansarda_obraka"
+    one_wire_id: L8
+    id: temp_7
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "reserv_1"
+    one_wire_id: L9
+    id: temp_8
+    update_interval: 10s
+
+  - platform: dallas_temp
+    name: "reserv_2"
+    one_wire_id: L10
+    id: temp_9
+    update_interval: 10s
+
+  - platform: wifi_signal
+    name: "Signal Strength"
+    id: rssi
+    update_interval: 20s
+
+
+#описываем реле   
+switch:
+  - platform: gpio
+    name: "Relay_valve"
+    pin: GPIO13
+    id: relay_1
+
+  - platform: gpio
+    name: "Relay_pump"
+    pin: GPIO4
+    id: relay_2
+
+#Термостат на нагрев бойлера
+climate:
+  - platform: thermostat
+    name: "Boiler_Thermostat"
+    id: boiler_thermostat
+    sensor: boiler_temp
+    min_heating_off_time: 60s # Изменить на 180? сек
+    min_heating_run_time: 60s # Изменить на 180? сек
+    min_idle_time: 30s
+    heat_deadband: 5 #порог ниже целевой 
+    heat_overrun: 5 #порог выше целевой
+    heat_action:
+     - switch.turn_on: relay_1
+     - delay: 30s
+     - switch.turn_on: relay_2
+    idle_action:
+     - switch.turn_off: relay_2
+     - switch.turn_off: relay_1
+
+    visual:
+      min_temperature: 50
+      max_temperature: 70
+      temperature_step:
+        target_temperature: 1
+        current_temperature: 0.01
+
+    default_preset: 1
+    on_boot_restore_from : memory
+    preset:
+      - name: "1"
+        default_target_temperature_low: 50
+        mode: HEAT
+
+#описываем дисплей
+
+globals:
+  - id: display_mode
+    type: int
+    initial_value: "0"
+
+script:  
+  - id: page_timer
+    then:
+      - delay: 10000ms
+      - globals.set:
+          id: display_mode
+          value: '0'
+
+i2c:
+  sda: GPIO17
+  scl: GPIO16
+  frequency: 200kHz
+  scan: False
+
+display:
+  platform: lcd_pcf8574
+  id: "lcd_display"
+  user_characters:
+      - position: 0
+        data: #У
+          - 0b10001
+          - 0b10001
+          - 0b10001
+          - 0b01111
+          - 0b00001
+          - 0b10001
+          - 0b01110
+          - 0b00000
+      - position: 1
+        data: #Щ
+          - 0b10101
+          - 0b10101
+          - 0b10101
+          - 0b10101
+          - 0b10101
+          - 0b11111
+          - 0b00001
+          - 0b00000
+      - position: 2
+        data: #Л
+          - 0b00011
+          - 0b00101
+          - 0b01001
+          - 0b01001
+          - 0b01001
+          - 0b01001
+          - 0b10001
+          - 0b00000
+      - position: 3
+        data: #Ц
+          - 0b10010
+          - 0b10010
+          - 0b10010
+          - 0b10010
+          - 0b10010
+          - 0b11111
+          - 0b00001
+          - 0b00000
+      - position: 4
+        data: #Я
+          - 0b01111
+          - 0b10001
+          - 0b10001
+          - 0b01111
+          - 0b00101
+          - 0b01001
+          - 0b10001
+          - 0b00000
+      - position: 5
+        data: #Э
+          - 0b01110
+          - 0b10001
+          - 0b00001
+          - 0b01111
+          - 0b00001
+          - 0b10001
+          - 0b01110
+          - 0b00000
+      - position: 6
+        data: #стрелка вверх
+          - 0b00100
+          - 0b01110
+          - 0b10101
+          - 0b00100
+          - 0b00100
+          - 0b00100
+          - 0b00100
+          - 0b00000
+      - position: 7
+        data: #стрелка вниз
+          - 0b00100
+          - 0b00100
+          - 0b00100
+          - 0b00100
+          - 0b10101
+          - 0b01110
+          - 0b00100
+          - 0b00000
+          
+  dimensions: 16x2
+  address: 0x27
+  update_interval: 500ms
+  lambda: |-
+    const unsigned char deg_sign[] = {0xDF, 0};
+    const unsigned char deg[] = {0xAF, 0};
+    switch (id(display_mode)){
+      case 0:
+        it.printf(0, 0,"TEK""\x08""\x01""A""\x04"" TEM:%.0f", id(boiler_temp).state);
+        it.printf(14, 0, "%sC", deg_sign);
+        it.printf(0, 1,"\x03""E""\x02""EBA""\x04"" TEM:%.0f", id(boiler_thermostat).target_temperature_low);
+        it.printf(14, 1, "%sC", deg_sign);
+        break;
+      case 1:
+        it.printf(0, 0, id(ip_address).state.c_str());
+        it.printf(0, 1, "RSSI: %d", int(id(rssi).state));
+        break;
+      case 2:
+        it.printf(0, 0,"-1"" \x05""T."" \x06"":%.2f", id(temp_0).state);
+        it.printf(14, 0, "%sC", deg_sign);
+        it.printf(0, 1,"-1"" \x05""T."" \x07"":%.2f", id(temp_1).state);
+        it.printf(14, 1, "%sC", deg_sign);
+        break;
+      case 3:
+        it.printf(0, 0," 1"" \x05""T."" \x06"":%.2f", id(temp_2).state);
+        it.printf(14, 0, "%sC", deg_sign);
+        it.printf(0, 1," 1"" \x05""T."" \x07"":%.2f", id(temp_3).state);
+        it.printf(14, 1, "%sC", deg_sign);
+        break;
+      case 4:
+        it.printf(0, 0," 2"" \x05""T."" \x06"":%.2f", id(temp_4).state);
+        it.printf(14, 0, "%sC", deg_sign);
+        it.printf(0, 1," 2"" \x05""T."" \x07"":%.2f", id(temp_5).state);
+        it.printf(14, 1, "%sC", deg_sign);
+        break;
+      case 5:
+        it.printf(0, 0," 3"" \x05""T."" \x06"":%.2f", id(temp_6).state);
+        it.printf(14, 0, "%sC", deg_sign);
+        it.printf(0, 1," 3"" \x05""T."" \x07"":%.2f", id(temp_7).state);
+        it.printf(14, 1, "%sC", deg_sign);
+        break;
+      case 6:
+        it.printf(0, 0,"REZERV 1"":%.2f", id(temp_8).state);
+        it.printf(14, 0, "%sC", deg_sign);
+        it.printf(0, 1,"REZERV 2"":%.2f", id(temp_9).state);
+        it.printf(14, 1, "%sC", deg_sign);
+        break;
+      }
+
+#описываем кнопки
+binary_sensor:
+  - platform: gpio
+    id: tempup
+    internal: true
+    pin:
+      number: GPIO35
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+    name: "Temp Up"
+    on_press:
+      then:
+        - lambda: |-
+              auto current_target_temp = id(boiler_thermostat).target_temperature_low;
+              id(boiler_thermostat).target_temperature_low = current_target_temp + 1;
+        
+  - platform: gpio
+    id: tempdown
+    internal: true
+    pin:
+      number: GPIO36
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+    name: "Temp Down"
+    on_press:
+      then:
+        - lambda: |-
+              auto current_target_temp = id(boiler_thermostat).target_temperature_low;
+              id(boiler_thermostat).target_temperature_low = current_target_temp - 1;
+
+  - platform: gpio
+    id: pageup
+    internal: true
+    pin:
+      number: GPIO39
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+    name: "Page Up" 
+    on_press:
+      then:
+        - lambda: |-
+            if (id(display_mode) > 5) {
+              id(display_mode) = 0;
+            } else {
+              id(display_mode) = id(display_mode) + 1;
+              id(page_timer).stop();
+              id(page_timer).execute();
+            }
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address   
+
